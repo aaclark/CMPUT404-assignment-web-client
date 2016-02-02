@@ -62,10 +62,16 @@ class HTTPClient(object):
             pass
 
 
-    def connect(self, host, port):
+    def connect(self, host, port=80):
         # use sockets!
-        p = (port if port is not None else 80)
-        return socket.create_connection((host,p))
+        #p = (port if port is not None else 80)
+        return socket.create_connection((host,port),30)
+
+
+    def expression(self,url):
+        program = re.compile('(?:http://)(?P<host>[a-zA-Z0-9.-]*)(?:\:)?(?P<port>\d*)(?P<path>\S*)')
+        result = program.match(url)
+        return result.groupdict()
 
 
     def get_code(self, data):
@@ -91,8 +97,9 @@ class HTTPClient(object):
             return ""
 
 
-    def format_header(self, cmd="GET ", path="/", hostname="none", accept="*/*"):
-        request = (cmd + path + " HTTP/1.1\r\n"+
+    def format_header(self, cmd, path='', hostname="none", accept="*/*"):
+        filepath = (path if (path is not '') else "/")
+        request = (cmd + filepath + " HTTP/1.1\r\n"+
                 "Host: "+ hostname + "\r\n"+
                 "Accept: "+ accept + "\r\n"+
                 "User-Agent: httpclient.py\r\n"+
@@ -111,39 +118,42 @@ class HTTPClient(object):
                 done = not part
         return str(buffer)
 
+    def lookup(self, url):
+        lookup = self.expression(url)
+        print lookup
+        hostname = lookup['host']
+        port = lookup['port']
+
+        socket = self.connect(hostname, (int(port) if (port is not '') else 80))
+        return (socket, lookup)
+       
 
     def GET(self, url, args=None):
-        # TODO substitute for inhouse parser
-        parse = urlparse.urlparse(url)
-        request = self.format_header("GET ",url)
-        print request
-        
         response = ""
         try:
-            socket = self.connect(h=parse.hostname,p=parse.port)
+            socket,lookup = self.lookup(url)
+            request = self.format_header("GET ", lookup['path'], lookup['host'])
+
             socket.sendall(request)
             response = self.recvall(socket)
+
         except:
-            print( "Request failed" )
-            #assert False
+            print( "Connection Failed" )
 
         return HTTPResponse(self.get_code(response), self.get_body(response))
 
 
     def POST(self, url, args=None):
-        # TODO substitute for inhouse parser
-        parse = urlparse.urlparse(url)
-        request = self.format_header("POST ",url)
-        print request
-        
         response = ""
         try:
-            socket = self.connect(host,port)
+            socket,lookup = self.lookup(url)
+            request = self.format_header("POST ", lookup['path'], lookup['host'])
+
             socket.sendall(request)
             response = self.recvall(socket)
+
         except:
-            print( "Request failed" )
-            #assert False
+            print( "Connection Failed" )
 
         return HTTPResponse(self.get_code(response), self.get_body(response))
 
@@ -172,7 +182,7 @@ if __name__ == "__main__":
         # DEBUG MODE
         DEBUG = True
         print ''
-        client.GET("http://www.google.ca")
+        client.GET("http://www.google.ca:80")
         assert True
     else:
         print client.command( sys.argv[1] )   
