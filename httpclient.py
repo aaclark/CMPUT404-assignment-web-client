@@ -65,7 +65,7 @@ class HTTPClient(object):
     def connect(self, host, port=80):
         # use sockets!
         #p = (port if port is not None else 80)
-        return socket.create_connection((host,port),30)
+        return socket.create_connection((host,port),5)
 
 
     def expression(self,url):
@@ -97,15 +97,23 @@ class HTTPClient(object):
             return ""
 
 
-    def format_header(self, cmd, path='', hostname="none", accept="*/*"):
+    def format_header(self, cmd, path='', hostname="none", accept="*/*", postargs=''):
         filepath = (path if (path is not '') else "/")
+
         request = (cmd + filepath + " HTTP/1.1\r\n"+
                 "Host: "+ hostname + "\r\n"+
                 "Accept: "+ accept + "\r\n"+
                 "User-Agent: httpclient.py\r\n"+
-                "Connection: close\r\n\r\n")
+                "Connection: close\r\n" + "\r\n")
         return request
 
+    '''
+    if (postargs is not '') :
+            request += (
+                    "Content-Length: "+ str(len(postargs))+ "\r\n"+
+                    "Content-Type: application/x-www-form-urlencoded\r\n\r\n"+
+                    str(postargs))
+'''
 
     def recvall(self, sock):
         buffer = bytearray()
@@ -132,7 +140,7 @@ class HTTPClient(object):
         response = ""
         try:
             socket,lookup = self.lookup(url)
-            request = self.format_header("GET ", lookup['path'], lookup['host'])
+            request = self.format_header("GET ", lookup['path'], lookup['host'] )
 
             socket.sendall(request)
             response = self.recvall(socket)
@@ -147,7 +155,7 @@ class HTTPClient(object):
         response = ""
         try:
             socket,lookup = self.lookup(url)
-            request = self.format_header("POST ", lookup['path'], lookup['host'])
+            request = self.format_header("POST ", lookup['path'], lookup['host'], urllib.urlencode(args))
 
             socket.sendall(request)
             response = self.recvall(socket)
