@@ -22,7 +22,7 @@ import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
-import urllib, urllib2, urlparse
+import urllib
 import csv
 
 def help():
@@ -33,7 +33,6 @@ class HTTPResponse(object):
         self.code = code
         self.body = body
 
-
 class HTTPClient(object):
     # Headers in a dictionary with callables
     httpheaders = {}
@@ -43,7 +42,6 @@ class HTTPClient(object):
     def __init__(self):
         print("")
     #def get_host_port(self,url):
-
 
     def csvtodict(self, source, d={}):
         ''' Helper function to generate dictionary from .csv '''
@@ -60,46 +58,29 @@ class HTTPClient(object):
             return d
         except IOError:
             pass
+        
 
-
-    def connect(self, host, port):
+    def connect(self, host, port=None):
         # use sockets!
-        p = (port if port is not None else 80)
-        return socket.create_connection((host,p))
-
+        timeout = 10
+        return socket.create_connection((host, (port if port is not None else 80)),timeout)
 
     def get_code(self, data):
         ''' get HTTP tokens from data string '''
         # for bug tests
         #last_msg = data.split()[2]
         # assuming looks like "HTTP/1.x [code] [message]
-        try:
-            return int(data.split()[1])
-        except:
-            return "500"
-
+        return data.split()[1]
 
     def get_headers(self,data):
         ''' after success code, get HTTP response header '''
-        return data.split("\r\n\r\n")[0]
 
+        return None
 
     def get_body(self, data):
-        try:
-            return data.split("\r\n\r\n")[1]
-        except:
-            return ""
+        return None
 
-
-    def format_header(self, cmd="GET ", path="/", hostname="none", accept="*/*"):
-        request = (cmd + path + " HTTP/1.1\r\n"+
-                "Host: "+ hostname + "\r\n"+
-                "Accept: "+ accept + "\r\n"+
-                "User-Agent: httpclient.py\r\n"+
-                "Connection: close\r\n\r\n")
-        return request
-
-
+    # read everything from the socket
     def recvall(self, sock):
         buffer = bytearray()
         done = False
@@ -111,56 +92,25 @@ class HTTPClient(object):
                 done = not part
         return str(buffer)
 
-
     def GET(self, url, args=None):
-        # TODO substitute for inhouse parser
-        parse = urlparse.urlparse(url)
-        request = self.format_header("GET ",url)
-        print request
-        
-        response = ""
-        try:
-            socket = self.connect(h=parse.hostname,p=parse.port)
-            socket.sendall(request)
-            response = self.recvall(socket)
-        except:
-            print( "Request failed" )
-            #assert False
-
-        return HTTPResponse(self.get_code(response), self.get_body(response))
-
+        # standard GET request:
+        # 'GET [resource] HTTP/1.1
+        code = 500
+        body = ""
+        return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        # TODO substitute for inhouse parser
-        parse = urlparse.urlparse(url)
-        request = self.format_header("POST ",url)
-        print request
-        
-        response = ""
-        try:
-            socket = self.connect(host,port)
-            socket.sendall(request)
-            response = self.recvall(socket)
-        except:
-            print( "Request failed" )
-            #assert False
-
-        return HTTPResponse(self.get_code(response), self.get_body(response))
-
+        code = 500
+        body = ""
+        return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
             return self.POST( url, args )
         else:
             return self.GET( url, args )
-
-
+    
 if __name__ == "__main__":
-    # ==== DEBUG ====
-    global DEBUG
-    DEBUG = False
-    # ^ NEVER DO THIS
-
     client = HTTPClient()
     command = "GET"
     if (len(sys.argv) <= 1):
@@ -170,9 +120,14 @@ if __name__ == "__main__":
         print client.command( sys.argv[2], sys.argv[1] )
     elif (sys.argv[1]=="DEBUG"):
         # DEBUG MODE
-        DEBUG = True
         print ''
-        client.GET("http://www.google.ca")
+        print ''
+        print ''
+        print ''
+        print client.connect("http://google.ca/")
+        assert True
+        assert True
+        assert True
         assert True
     else:
         print client.command( sys.argv[1] )   
